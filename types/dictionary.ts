@@ -1,11 +1,25 @@
 export type EntryStatus = 'draft' | 'review' | 'disputed' | 'confirmed';
 
+export type RecordingStatus = 'verified';
+
+export interface RecordingItem {
+  id: string;
+  batch: string;
+  fileName: string;
+  dialect: string;
+  speaker: string;
+  duration: string;
+  status: RecordingStatus;
+  checkedAt: string;
+}
+
 export interface DialectVariant {
   id: string;
   dialect: string;
   form: string;
   pronunciation: string;
   note: string;
+  recordings: RecordingItem[];
 }
 
 export interface ExampleSentence {
@@ -20,6 +34,7 @@ export interface DictionarySource {
   title: string;
   citation: string;
   url: string;
+  recordingId?: string;
 }
 
 export interface ReviewComment {
@@ -78,4 +93,41 @@ export interface DuplicatePair {
   rightId: string;
   score: number;
   reasons: string[];
+}
+
+export type RecordingMatchKind =
+  | 'attach'
+  | 'update'
+  | 'new-variant'
+  | 'missing-entry'
+  | 'conflict'
+  | 'duplicate'
+  | 'invalid';
+
+export interface RecordingRow {
+  rowIndex: number;
+  batch: string;
+  form: string;
+  dialect: string;
+  speaker: string;
+  fileName: string;
+  duration: string;
+}
+
+export interface RecordingPreviewRow extends RecordingRow {
+  match: RecordingMatchKind;
+  entryId?: string;
+  entryHeadword?: string;
+  variantId?: string;
+  variantDialect?: string;
+  existingRecordingId?: string;
+  conflictHeadword?: string;
+  note: string;
+}
+
+export interface RecordingImportResult {
+  attached: number;
+  updated: number;
+  variantsCreated: number;
+  skipped: number;
 }

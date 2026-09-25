@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useDictionaryStore } from '~/store/dictionary';
+import type { DictionaryEntry } from '~/types/dictionary';
 
 const store = useDictionaryStore();
-const emit = defineEmits<{ create: []; duplicates: []; versions: [] }>();
+const emit = defineEmits<{ create: []; duplicates: []; versions: []; recordings: [] }>();
 
 const statusMeta = {
   draft: { label: '草稿', theme: 'default' },
@@ -10,6 +11,8 @@ const statusMeta = {
   disputed: { label: '争议', theme: 'danger' },
   confirmed: { label: '已确认', theme: 'success' }
 } as const;
+
+const recordingCount = (entry: DictionaryEntry) => entry.dialectVariants.reduce((sum, variant) => sum + (variant.recordings?.length ?? 0), 0);
 </script>
 
 <template>
@@ -53,12 +56,14 @@ const statusMeta = {
         <div class="entry-card-meta">
           <span>{{ entry.dialectVariants.length }} 方言变体</span>
           <span>{{ entry.examples.length }} 例句</span>
+          <span v-if="recordingCount(entry)" class="recording-count">{{ recordingCount(entry) }} 录音</span>
           <span v-if="entry.reviewerComments.filter((item) => item.status === 'open').length" class="comment-count">{{ entry.reviewerComments.filter((item) => item.status === 'open').length }} 条意见</span>
         </div>
       </button>
       <t-empty v-if="!store.filteredEntries.length" description="没有符合条件的词条" />
     </div>
     <div class="sidebar-footer">
+      <button class="text-action" @click="emit('recordings')"><span>{{ store.recordingTotal }}</span> 条已核对录音</button>
       <button class="text-action" @click="emit('duplicates')"><span>{{ store.duplicates.length }}</span> 组疑似重复</button>
       <button class="text-action" @click="emit('versions')"><span>{{ store.versions.length }}</span> 条版本记录</button>
     </div>

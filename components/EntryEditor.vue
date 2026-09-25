@@ -7,7 +7,7 @@ const activeTab = ref('basic');
 const entry = computed(() => store.selectedEntry);
 const synonymsText = computed(() => entry.value?.synonyms.join('、') ?? '');
 
-const eventValue = (event: any) => typeof event === 'string' || typeof event === 'number' ? String(event) : event?.target?.value ?? event?.e?.target?.value ?? event?.value ?? '';
+const eventValue = (event: any): string => typeof event === 'string' || typeof event === 'number' ? String(event) : event?.target?.value ?? event?.e?.target?.value ?? event?.value ?? '';
 
 const commitInput = (event: any, field: 'headword' | 'pronunciation' | 'partOfSpeech' | 'definition' | 'notes') => {
   if (!entry.value) return;
@@ -37,7 +37,7 @@ const commitInput = (event: any, field: 'headword' | 'pronunciation' | 'partOfSp
             <label class="field-block"><span>发音说明</span><t-input :default-value="entry.pronunciation" @blur="commitInput($event, 'pronunciation')" placeholder="声调、重音或发音人说明" /></label>
           </div>
           <div class="field-grid two compact-grid">
-            <label class="field-block"><span>词性</span><t-select :model-value="entry.partOfSpeech" @change="(value) => store.updateField(entry.id, 'partOfSpeech', String(value || ''))" clearable>
+            <label class="field-block"><span>词性</span><t-select :model-value="entry.partOfSpeech" @change="(value: any) => store.updateField(entry.id, 'partOfSpeech', String(value || ''))" clearable>
               <t-option value="名词" label="名词" /><t-option value="动词" label="动词" /><t-option value="形容词" label="形容词" /><t-option value="副词" label="副词" /><t-option value="方向词" label="方向词" /><t-option value="量词" label="量词" /><t-option value="短语" label="短语" />
             </t-select></label>
             <label class="field-block"><span>同义词（用顿号分隔）</span><t-input :default-value="synonymsText" @blur="store.setSynonyms(entry.id, eventValue($event).split(/[、,，]/).map((item) => item.trim()).filter(Boolean))" placeholder="水潭、泉眼" /></label>
@@ -58,6 +58,17 @@ const commitInput = (event: any, field: 'headword' | 'pronunciation' | 'partOfSp
               <label class="field-block"><span>读音</span><t-input :default-value="variant.pronunciation" @blur="store.updateVariant(entry.id, variant.id, 'pronunciation', eventValue($event))" /></label>
             </div>
             <label class="field-block"><span>使用说明</span><t-input :default-value="variant.note" @blur="store.updateVariant(entry.id, variant.id, 'note', eventValue($event))" /></label>
+            <div v-if="variant.recordings?.length" class="recording-list">
+              <div class="recording-title"><span>田野录音</span><small>{{ variant.recordings.length }} 条 · 核对状态如下</small></div>
+              <div v-for="recording in variant.recordings" :key="recording.id" class="recording-item">
+                <t-tag size="small" variant="light" :theme="recording.status === 'verified' ? 'success' : 'default'">{{ recording.status === 'verified' ? '已核对' : recording.status }}</t-tag>
+                <span class="recording-file">{{ recording.fileName }}</span>
+                <span>{{ recording.speaker || '发音人未记录' }}</span>
+                <span class="mono">{{ recording.duration || '时长未记录' }}</span>
+                <span class="recording-batch">批次 {{ recording.batch || '未命名' }}</span>
+                <time>{{ new Date(recording.checkedAt).toLocaleDateString('zh-CN') }}</time>
+              </div>
+            </div>
           </div>
           <t-empty v-if="!entry.dialectVariants.length" description="暂未记录方言变体" />
         </div>
