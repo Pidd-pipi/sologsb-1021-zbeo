@@ -1,20 +1,36 @@
 import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type {
-  AuditRecord, DictionaryEntry, DictionarySnapshot, DuplicatePair, EntryStatus, ReviewComment, VersionRecord
+  AuditRecord, DictionaryEntry, DictionarySnapshot, DuplicatePair, EntryStatus, RecordingRecord, ReviewComment, VersionRecord
 } from '~/types/dictionary';
 import { findDuplicates } from '~/utils/dictionary';
+import type { RecordingImportResult, RecordingPreviewRow } from '~/utils/recordings';
 
 const now = () => new Date().toISOString();
 const uid = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 9)}-${Date.now().toString(36)}`;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+const normalizeEntries = (list: DictionaryEntry[]) => {
+  list.forEach((entry) => {
+    entry.dialectVariants = Array.isArray(entry.dialectVariants) ? entry.dialectVariants : [];
+    entry.dialectVariants.forEach((variant) => {
+      variant.recordings = Array.isArray(variant.recordings) ? variant.recordings : [];
+    });
+    entry.sources = Array.isArray(entry.sources) ? entry.sources : [];
+  });
+  return list;
+};
+
 const seedEntries = (): DictionaryEntry[] => [
   {
     id: 'entry-001', headword: 'ŋgɨ³³', pronunciation: 'ŋgɨ˧˧（低平调）', partOfSpeech: '名词', definition: '山间常年不涸的小水潭；也用来比喻安静而可靠的人。',
     dialectVariants: [
-      { id: 'v-1', dialect: '北坡话', form: 'ŋgɨ³³ tsha⁵⁵', pronunciation: 'ŋgɨ tsha', note: '强调泉水源头' },
-      { id: 'v-2', dialect: '河谷话', form: 'a³³ ŋgɨ³³', pronunciation: 'a ŋgɨ', note: '前缀形式' }
+      { id: 'v-1', dialect: '北坡话', form: 'ŋgɨ³³ tsha⁵⁵', pronunciation: 'ŋgɨ tsha', note: '强调泉水源头', recordings: [
+        { id: 'rec-seed-1', batch: '2018-04 嘎木村', form: 'ŋgɨ³³ tsha⁵⁵', dialect: '北坡话', speaker: '和秀英', fileName: 'A-2018-04-17', duration: '00:12:31', status: 'verified', importedAt: '2025-03-09T06:12:00.000Z', updatedAt: '2025-03-09T06:12:00.000Z' }
+      ] },
+      { id: 'v-2', dialect: '河谷话', form: 'a³³ ŋgɨ³³', pronunciation: 'a ŋgɨ', note: '前缀形式', recordings: [
+        { id: 'rec-seed-2', batch: '2019-07 河谷村', form: 'a³³ ŋgɨ³³', dialect: '河谷话', speaker: '阿普·此里', fileName: 'RV-2019-075', duration: '00:08:02', status: 'pending', importedAt: '2025-03-09T06:12:00.000Z', updatedAt: '2025-03-09T06:12:00.000Z' }
+      ] }
     ],
     examples: [
       { id: 'ex-1', text: 'a³³ ŋgɨ³³ ma³³ ʔmɨ⁵⁵.', translation: '这个小水潭是甜的。', source: '民间故事·寻找水源' },
@@ -22,13 +38,15 @@ const seedEntries = (): DictionaryEntry[] => [
     ],
     sources: [
       { id: 'src-1', title: '北坡方言词汇表', citation: '李某某记录，1987，手稿第 42 页', url: '' },
-      { id: 'src-2', title: '嘎木村发音人访谈', citation: '录音 A-2018-04-17，00:12:31', url: '' }
+      { id: 'src-2', title: '嘎木村发音人访谈', citation: '录音 A-2018-04-17，00:12:31', url: '', recordingId: 'rec-seed-1' }
     ],
     synonyms: ['水潭', '泉水'], status: 'confirmed', notes: '声调标音经两位发音人复核。', createdAt: '2024-08-11T04:00:00.000Z', updatedAt: '2025-03-09T06:12:00.000Z', reviewerComments: []
   },
   {
     id: 'entry-002', headword: 'dʑa⁵⁵', pronunciation: 'dʑa˥（高平调）', partOfSpeech: '动词', definition: '把谷物摊开晾晒；引申为耐心等待事情成熟。',
-    dialectVariants: [{ id: 'v-3', dialect: '东南村话', form: 'dʑa⁵⁵ ka³³', pronunciation: 'dʑa ka', note: '带结果补语 habitual 形式' }],
+    dialectVariants: [{ id: 'v-3', dialect: '东南村话', form: 'dʑa⁵⁵ ka³³', pronunciation: 'dʑa ka', note: '带结果补语 habitual 形式', recordings: [
+      { id: 'rec-seed-3', batch: '2023-09 东南村', form: 'dʑa⁵⁵ ka³³', dialect: '东南村话', speaker: '王学明', fileName: 'DN-2023-0912-07', duration: '00:05:44', status: 'verified', importedAt: '2025-02-18T02:00:00.000Z', updatedAt: '2025-02-18T02:00:00.000Z' }
+    ] }],
     examples: [{ id: 'ex-3', text: 'kho⁵⁵ dʑa⁵⁵ tɕhi³³.', translation: '谷子已经摊开晒了。', source: '田野记录 2023-09-12' }],
     sources: [{ id: 'src-3', title: '东南村生产词调查', citation: '王某某，2023，词条 071', url: '' }],
     synonyms: ['晒', '等待'], status: 'review', notes: '“等待”的引申义需由审校人确认。', createdAt: '2024-10-01T06:00:00.000Z', updatedAt: '2025-02-18T02:00:00.000Z',
@@ -38,7 +56,7 @@ const seedEntries = (): DictionaryEntry[] => [
     id: 'entry-003', headword: 'dʑa³³', pronunciation: 'dʑa˧（中调）', partOfSpeech: '动词', definition: '摊晒谷物，使水分蒸发。', dialectVariants: [], examples: [{ id: 'ex-4', text: 'dʑa³³ ko⁵⁵ kho⁵⁵.', translation: '把粮食拿去晒。', source: '语音调查 M-12' }], sources: [{ id: 'src-4', title: '方言调查卡片', citation: '1992，卡片 M-12', url: '' }], synonyms: ['晒粮'], status: 'disputed', notes: '与 dʑa⁵⁵ 可能是同一词条的声调变体。', createdAt: '2024-12-01T06:00:00.000Z', updatedAt: '2025-02-20T03:00:00.000Z', reviewerComments: []
   },
   {
-    id: 'entry-004', headword: 'ʔma³³', pronunciation: 'ʔma˧', partOfSpeech: '名词', definition: '母亲；也可用于称呼年长女性亲属。', dialectVariants: [{ id: 'v-4', dialect: '河西话', form: 'ma³³', pronunciation: 'ma', note: '喉塞音弱化' }], examples: [{ id: 'ex-5', text: 'ʔma³³, ŋa⁵⁵ tɕi³³ lo³³.', translation: '妈妈，我要回家了。', source: '日常生活会话 01' }], sources: [{ id: 'src-5', title: '亲缘称谓调查', citation: '赵某某，2011，表 3', url: '' }], synonyms: ['妈妈', '母亲'], status: 'draft', notes: '需补充敬称形式。', createdAt: '2025-01-11T04:00:00.000Z', updatedAt: '2025-01-11T04:00:00.000Z', reviewerComments: []
+    id: 'entry-004', headword: 'ʔma³³', pronunciation: 'ʔma˧', partOfSpeech: '名词', definition: '母亲；也可用于称呼年长女性亲属。', dialectVariants: [{ id: 'v-4', dialect: '河西话', form: 'ma³³', pronunciation: 'ma', note: '喉塞音弱化', recordings: [] }], examples: [{ id: 'ex-5', text: 'ʔma³³, ŋa⁵⁵ tɕi³³ lo³³.', translation: '妈妈，我要回家了。', source: '日常生活会话 01' }], sources: [{ id: 'src-5', title: '亲缘称谓调查', citation: '赵某某，2011，表 3', url: '' }], synonyms: ['妈妈', '母亲'], status: 'draft', notes: '需补充敬称形式。', createdAt: '2025-01-11T04:00:00.000Z', updatedAt: '2025-01-11T04:00:00.000Z', reviewerComments: []
   },
   {
     id: 'entry-005', headword: 'lo³³', pronunciation: 'lo˧', partOfSpeech: '方向词', definition: '表示向说话者所在位置移动，常与位移动词搭配。', dialectVariants: [], examples: [{ id: 'ex-6', text: 'a³³ mɨ⁵⁵ lo³³.', translation: '到这里来。', source: '语法调查句表 03' }], sources: [{ id: 'src-6', title: '动词方向范畴笔记', citation: '陈某某，2005，第 18 页', url: '' }], synonyms: ['来'], status: 'confirmed', notes: '', createdAt: '2024-09-18T02:00:00.000Z', updatedAt: '2025-01-04T02:00:00.000Z', reviewerComments: []
@@ -76,6 +94,8 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   }));
   const duplicates = computed<DuplicatePair[]>(() => findDuplicates(entries));
   const openComments = computed(() => entries.reduce((sum, entry) => sum + entry.reviewerComments.filter((comment) => comment.status === 'open').length, 0));
+  const recordingCount = computed(() => entries.reduce((sum, entry) => sum + entry.dialectVariants.reduce((inner, variant) => inner + (variant.recordings?.length ?? 0), 0), 0));
+  const pendingRecordingCount = computed(() => entries.reduce((sum, entry) => sum + entry.dialectVariants.reduce((inner, variant) => inner + (variant.recordings ?? []).filter((recording) => recording.status === 'pending').length, 0), 0));
   const filteredEntries = computed(() => {
     const term = query.value.trim().toLowerCase();
     return entries.filter((entry) => {
@@ -99,7 +119,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
 
   function restore(value: DictionarySnapshot) {
     revision.value = value.revision ?? 1;
-    entries.splice(0, entries.length, ...(clone(value.entries ?? [])));
+    entries.splice(0, entries.length, ...normalizeEntries(clone(value.entries ?? [])));
     versions.splice(0, versions.length, ...(clone(value.versions ?? [])));
     audit.splice(0, audit.length, ...(clone(value.audit ?? [])));
     if (!entries.some((entry) => entry.id === selectedId.value)) selectedId.value = entries[0]?.id ?? '';
@@ -142,7 +162,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   function addVariant(entryId: string) {
     const entry = entries.find((item) => item.id === entryId);
     if (!entry) return;
-    const variant = { id: uid('variant'), dialect: '', form: '', pronunciation: '', note: '' };
+    const variant = { id: uid('variant'), dialect: '', form: '', pronunciation: '', note: '', recordings: [] as RecordingRecord[] };
     commit('新增方言变体', '添加一条方言变体', [entryId], () => entry.dialectVariants.push(variant));
   }
 
@@ -203,6 +223,91 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     commit('删除来源', '移除一条来源', [entryId], () => {
       const index = entry.sources.findIndex((source) => source.id === sourceId);
       if (index >= 0) entry.sources.splice(index, 1);
+    });
+  }
+
+  function upsertRecordingSource(entry: DictionaryEntry, recording: RecordingRecord) {
+    const citation = `${recording.batch} · ${recording.dialect} · 发音人 ${recording.speaker || '未署名'} · 时长 ${recording.duration || '未知'}`;
+    const linked = entry.sources.find((source) => source.recordingId === recording.id);
+    if (linked) {
+      linked.citation = citation;
+      return;
+    }
+    entry.sources.push({ id: uid('source'), title: `田野录音 ${recording.fileName}`, citation, url: '', recordingId: recording.id });
+  }
+
+  function importRecordings(rows: RecordingPreviewRow[]): RecordingImportResult | null {
+    const actionable = rows.filter((row) => row.action !== 'skip' && row.entryId);
+    if (!actionable.length) return null;
+    const result: RecordingImportResult = {
+      created: actionable.filter((row) => row.action === 'new').length,
+      updated: actionable.filter((row) => row.action === 'update').length,
+      variants: new Set(actionable.filter((row) => row.createVariant).map((row) => `${row.entryId}::${row.input.dialect.trim().toLowerCase()}`)).size,
+      skipped: rows.length - actionable.length
+    };
+    const batches = [...new Set(actionable.map((row) => row.input.batch))];
+    const entryIds = [...new Set(actionable.map((row) => row.entryId!))];
+    const detail = `批次 ${batches.join('、')}：新增 ${result.created} 条、更新 ${result.updated} 条录音`
+      + `${result.variants ? `，新建 ${result.variants} 个方言变体` : ''}${result.skipped ? `，跳过 ${result.skipped} 行` : ''}`;
+    commit('导入录音核对', detail, entryIds, () => {
+      actionable.forEach((row) => {
+        const input = row.input;
+        if (row.action === 'update' && row.existingRecordingId) {
+          for (const entry of entries) {
+            const variant = entry.dialectVariants.find((item) => (item.recordings ?? []).some((recording) => recording.id === row.existingRecordingId));
+            const recording = variant?.recordings.find((item) => item.id === row.existingRecordingId);
+            if (!recording) continue;
+            recording.batch = input.batch;
+            recording.form = input.form;
+            recording.dialect = input.dialect.trim();
+            recording.speaker = input.speaker;
+            recording.fileName = input.fileName;
+            recording.duration = input.duration;
+            recording.updatedAt = now();
+            upsertRecordingSource(entry, recording);
+            break;
+          }
+          return;
+        }
+        const entry = entries.find((item) => item.id === row.entryId);
+        if (!entry) return;
+        let variant = row.variantId ? entry.dialectVariants.find((item) => item.id === row.variantId) : undefined;
+        if (!variant) {
+          const dialectName = input.dialect.trim();
+          variant = entry.dialectVariants.find((item) => item.dialect.trim().toLowerCase() === dialectName.toLowerCase());
+          if (!variant) {
+            variant = { id: uid('variant'), dialect: dialectName, form: input.form.trim(), pronunciation: '', note: '录音核对导入时补建', recordings: [] };
+            entry.dialectVariants.push(variant);
+          }
+        }
+        const recording: RecordingRecord = {
+          id: uid('rec'),
+          batch: input.batch,
+          form: input.form,
+          dialect: input.dialect.trim(),
+          speaker: input.speaker,
+          fileName: input.fileName,
+          duration: input.duration,
+          status: row.issues.includes('duplicate-cross-batch') ? 'pending' : 'verified',
+          importedAt: now(),
+          updatedAt: now()
+        };
+        variant.recordings.push(recording);
+        upsertRecordingSource(entry, recording);
+      });
+    });
+    return result;
+  }
+
+  function toggleRecordingStatus(entryId: string, variantId: string, recordingId: string) {
+    const entry = entries.find((item) => item.id === entryId);
+    const variant = entry?.dialectVariants.find((item) => item.id === variantId);
+    const recording = variant?.recordings.find((item) => item.id === recordingId);
+    if (!entry || !variant || !recording) return;
+    const next = recording.status === 'verified' ? 'pending' : 'verified';
+    commit('核对录音', `录音 ${recording.fileName} 标记为「${next === 'verified' ? '已核对' : '待复核'}」`, [entryId], () => {
+      recording.status = next;
+      recording.updatedAt = now();
     });
   }
 
@@ -291,7 +396,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     const version = versions.find((item) => item.id === versionId);
     if (!version) return;
     commit('恢复版本', `恢复 ${new Date(version.at).toLocaleString('zh-CN')} 之前的版本`, [], () => {
-      entries.splice(0, entries.length, ...clone(version.before));
+      entries.splice(0, entries.length, ...normalizeEntries(clone(version.before)));
     });
   }
 
@@ -313,9 +418,11 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   return {
     revision, entries, versions, audit, selectedId, hydrated, query, statusFilter, dialectFilter, fieldReplyDrafts,
     selectedEntry, filteredEntries, dialects, duplicates, openComments, persistableSnapshot,
+    recordingCount, pendingRecordingCount,
     canUndo: computed(() => undoStack.value.length > 0), canRedo: computed(() => redoStack.value.length > 0),
     createEntry, updateField, setStatus, addVariant, updateVariant, removeVariant, addExample, updateExample, removeExample,
     addSource, updateSource, removeSource, setSynonyms, addComment, replyComment, toggleComment, deleteEntry, mergeEntries,
+    importRecordings, toggleRecordingStatus,
     undo, redo, restoreVersion, hydrateFromBrowser, exportPackage
   };
 });

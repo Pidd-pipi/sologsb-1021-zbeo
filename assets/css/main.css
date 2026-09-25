@@ -172,6 +172,52 @@ kbd { padding: 3px 6px; border: 1px solid #cbd6d1; border-bottom-width: 2px; bor
 .audit-line div { display: flex; flex-direction: column; gap: 2px; }
 .audit-line strong { font-size: 9px; }
 .audit-line span { color: var(--muted); font-size: 8px; }
+.recording-import { display: flex; flex-direction: column; }
+.import-editor { padding: 12px; border: 1px solid #dde5e1; border-radius: 9px; background: #f8faf8; }
+.import-editor-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 9px; }
+.import-editor-head strong { font-size: 12px; }
+.import-editor-head p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.import-editor-tools { display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px; width: 220px; }
+.import-run { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+.parse-error { color: var(--danger); font-size: 10px; }
+.preview-summary { display: flex; gap: 8px; margin-top: 13px; }
+.preview-summary div { flex: 1; padding: 8px 4px; text-align: center; border-radius: 8px; background: #f0f4f1; }
+.preview-summary strong { display: block; font-family: "Songti SC", serif; font-size: 19px; color: var(--forest); }
+.preview-summary span { color: var(--muted); font-size: 9px; }
+.preview-summary .warn strong { color: var(--ochre); }
+.preview-summary .bad strong { color: var(--danger); }
+.preview-scroll { max-height: 330px; margin-top: 11px; overflow: auto; border: 1px solid #dbe3df; border-radius: 9px; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.preview-table th { position: sticky; top: 0; padding: 8px; color: #657971; background: #eef3f0; font-size: 9px; text-align: left; white-space: nowrap; }
+.preview-table td { padding: 7px 8px; border-top: 1px solid #e6ece9; background: white; vertical-align: top; }
+.preview-table tr.muted td { color: #9aa7a2; background: #f6f8f7; }
+.preview-table td.num { color: #8a9893; }
+.preview-table td.mono { font-family: ui-monospace, monospace; }
+.preview-table td p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
+.note-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.issue-pill { padding: 2px 6px; border-radius: 8px; font-size: 8px; white-space: nowrap; }
+.issue-pill.danger { color: #a03d31; background: #fbe9e5; }
+.issue-pill.warning { color: #8a5a1d; background: #fbf0de; }
+.match-target { color: var(--forest); font-size: 9px; font-weight: 700; }
+.import-result { margin-top: 12px; }
+.import-hint { margin-right: auto; color: var(--muted); font-size: 9px; }
+.variant-recordings { margin-top: 9px; padding: 8px 9px; border: 1px dashed #cfdbd5; border-radius: 7px; background: #f2f6f3; }
+.rec-count { color: var(--forest); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.rec-line { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: #5b6f68; font-size: 9px; }
+.rec-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #c0ccc7; }
+.rec-dot.verified { background: #4f9e7c; }
+.rec-dot.pending { background: #d9a24a; }
+.rec-file { color: #2c4a41; font-family: ui-monospace, monospace; font-weight: 700; }
+.rec-line em { margin-left: auto; font-size: 8px; font-style: normal; }
+.rec-line em.verified { color: #39705f; }
+.rec-line em.pending { color: #a2691f; }
+.rec-card-head { display: flex; align-items: center; gap: 8px; }
+.rec-card-head strong { font-family: ui-monospace, monospace; font-size: 12px; }
+.rec-batch { color: var(--muted); font-size: 9px; }
+.rec-card-head .t-button { margin-left: auto; }
+.rec-card-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: #55685f; font-size: 10px; }
+.rec-card-time { margin-top: 7px; color: #95a19c; font-size: 8px; }
+.source-recording { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #5b6f68; font-size: 9px; }
 @media (max-width: 1320px) {
   .workspace { grid-template-columns: minmax(270px, .72fr) minmax(430px, 1.4fr) minmax(300px, .84fr); gap: 10px; padding: 0 12px; }
   .project-bar, .bottom-bar { padding-left: 12px; padding-right: 12px; }

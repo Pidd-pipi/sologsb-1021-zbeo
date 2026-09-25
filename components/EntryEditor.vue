@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useDictionaryStore } from '~/store/dictionary';
+import type { DictionarySource } from '~/types/dictionary';
 
 const store = useDictionaryStore();
 const activeTab = ref('basic');
 const entry = computed(() => store.selectedEntry);
 const synonymsText = computed(() => entry.value?.synonyms.join('、') ?? '');
+const recordingItems = computed(() => (entry.value?.dialectVariants ?? [])
+  .flatMap((variant) => (variant.recordings ?? []).map((recording) => ({ variant, recording }))));
+const recordingById = computed(() => Object.fromEntries(recordingItems.value.map((item) => [item.recording.id, item])));
+const linkedRecording = (source: DictionarySource) => source.recordingId ? recordingById.value[source.recordingId] : undefined;
 
 const eventValue = (event: any) => typeof event === 'string' || typeof event === 'number' ? String(event) : event?.target?.value ?? event?.e?.target?.value ?? event?.value ?? '';
 
@@ -58,6 +63,15 @@ const commitInput = (event: any, field: 'headword' | 'pronunciation' | 'partOfSp
               <label class="field-block"><span>读音</span><t-input :default-value="variant.pronunciation" @blur="store.updateVariant(entry.id, variant.id, 'pronunciation', eventValue($event))" /></label>
             </div>
             <label class="field-block"><span>使用说明</span><t-input :default-value="variant.note" @blur="store.updateVariant(entry.id, variant.id, 'note', eventValue($event))" /></label>
+            <div v-if="variant.recordings?.length" class="variant-recordings">
+              <span class="rec-count">录音 {{ variant.recordings.length }} 条</span>
+              <div v-for="recording in variant.recordings" :key="recording.id" class="rec-line">
+                <span class="rec-dot" :class="recording.status" />
+                <span class="rec-file">{{ recording.fileName }}</span>
+                <span>{{ recording.speaker || '发音人未知' }} · {{ recording.duration || '时长未知' }} · {{ recording.batch }}</span>
+                <em :class="recording.status">{{ recording.status === 'verified' ? '已核对' : '待复核' }}</em>
+              </div>
+            </div>
           </div>
           <t-empty v-if="!entry.dialectVariants.length" description="暂未记录方言变体" />
         </div>
@@ -83,8 +97,37 @@ const commitInput = (event: any, field: 'headword' | 'pronunciation' | 'partOfSp
             <button class="remove-button" @click="store.removeSource(entry.id, source.id)">×</button>
             <div class="field-grid two"><label class="field-block"><span>来源名称</span><t-input :default-value="source.title" @blur="store.updateSource(entry.id, source.id, 'title', eventValue($event))" /></label><label class="field-block"><span>链接（可选）</span><t-input :default-value="source.url" @blur="store.updateSource(entry.id, source.id, 'url', eventValue($event))" /></label></div>
             <label class="field-block"><span>引用信息</span><t-input :default-value="source.citation" @blur="store.updateSource(entry.id, source.id, 'citation', eventValue($event))" /></label>
+            <div v-if="linkedRecording(source)" class="source-recording">
+              <span class="rec-dot" :class="linkedRecording(source)!.recording.status" />
+              关联录音 {{ linkedRecording(source)!.recording.fileName }} · {{ linkedRecording(source)!.recording.status === 'verified' ? '已核对' : '待复核' }}
+            </div>
           </div>
           <t-empty v-if="!entry.sources.length" description="暂未记录来源" />
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="recordings" label="录音">
+        <div class="editor-scroll">
+          <div class="section-title">
+            <div><h3>田野录音与核对状态</h3><p>录音随批次导入并挂到对应方言变体与来源，核对状态在词条内实时可见。</p></div>
+            <t-tag v-if="recordingItems.length" size="small" variant="light" theme="primary">{{ recordingItems.length }} 条录音</t-tag>
+          </div>
+          <div v-for="item in recordingItems" :key="item.recording.id" class="subcard rec-card">
+            <div class="rec-card-head">
+              <t-tag size="small" variant="light" :theme="item.recording.status === 'verified' ? 'success' : 'warning'">{{ item.recording.status === 'verified' ? '已核对' : '待复核' }}</t-tag>
+              <strong>{{ item.recording.fileName }}</strong>
+              <span class="rec-batch">{{ item.recording.batch }}</span>
+              <t-button size="small" variant="outline" @click="store.toggleRecordingStatus(entry.id, item.variant.id, item.recording.id)">{{ item.recording.status === 'verified' ? '转为待复核' : '标记已核对' }}</t-button>
+            </div>
+            <div class="rec-card-meta">
+              <span>方言：{{ item.variant.dialect || '未标注' }}</span>
+              <span>词形：{{ item.recording.form || '—' }}</span>
+              <span>发音人：{{ item.recording.speaker || '未署名' }}</span>
+              <span>时长：{{ item.recording.duration || '未知' }}</span>
+            </div>
+            <div class="rec-card-time">导入 {{ new Date(item.recording.importedAt).toLocaleString('zh-CN') }} · 更新 {{ new Date(item.recording.updatedAt).toLocaleString('zh-CN') }}</div>
+          </div>
+          <t-empty v-if="!recordingItems.length" description="暂无录音。可从词条库底部「录音核对」入口粘贴批次清单导入。" />
         </div>
       </t-tab-panel>
     </t-tabs>

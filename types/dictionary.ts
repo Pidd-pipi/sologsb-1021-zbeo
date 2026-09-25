@@ -1,11 +1,27 @@
 export type EntryStatus = 'draft' | 'review' | 'disputed' | 'confirmed';
 
+export type RecordingStatus = 'pending' | 'verified';
+
+export interface RecordingRecord {
+  id: string;
+  batch: string;
+  form: string;
+  dialect: string;
+  speaker: string;
+  fileName: string;
+  duration: string;
+  status: RecordingStatus;
+  importedAt: string;
+  updatedAt: string;
+}
+
 export interface DialectVariant {
   id: string;
   dialect: string;
   form: string;
   pronunciation: string;
   note: string;
+  recordings: RecordingRecord[];
 }
 
 export interface ExampleSentence {
@@ -20,6 +36,7 @@ export interface DictionarySource {
   title: string;
   citation: string;
   url: string;
+  recordingId?: string;
 }
 
 export interface ReviewComment {
